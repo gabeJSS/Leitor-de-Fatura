@@ -17,8 +17,8 @@ GREEN_HOV = "#1f8a4a"
 VERO_COLOR  = "#ff8c08"
 ALGAR_COLOR = "#138126"
 VIVO_COLOR  = "#9b59b6"
-CLARO_COLOR = "#e74c3c"
-MAIS_COLOR  = "#C5C200"   # laranja Mais Internet
+CLARO_COLOR = "#e63f2c"
+MAIS_COLOR  = "#C5C200"
 
 APPDATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MacroNotas")
 os.makedirs(APPDATA_DIR, exist_ok=True)

@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import webbrowser
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
@@ -17,6 +18,7 @@ from core.macro_runner import carregar_json, MacroRunner
 from core.database import normalizar_servidor_sql, testar_conexao
 from downloaders.mais import MaisDownloader
 from downloaders.vero import VeroDownloader
+from downloaders.claro import ClaroDownloader
 from core.settings import load_settings, save_settings
 
 
@@ -325,16 +327,22 @@ class MacroApp:
         self.settings_vars["downloaders"]["vero_pass"] = tk.StringVar(value=self.settings["downloaders"].get("vero", {}).get("password", ""))
         ttk.Entry(parent, textvariable=self.settings_vars["downloaders"]["vero_pass"], show="*").grid(row=len(campos) + 9, column=1, sticky="ew", pady=4)
 
+        # Claro
+        tk.Label(parent, text="Claro (CNPJ/Documento):", bg=ENTRY_BG, fg=SUBTEXT,
+                 font=("Segoe UI", 9)).grid(row=len(campos) + 10, column=0, sticky="e", padx=(0, 8), pady=4)
+        self.settings_vars["downloaders"]["claro_doc"] = tk.StringVar(value=self.settings["downloaders"].get("claro", {}).get("document", ""))
+        ttk.Entry(parent, textvariable=self.settings_vars["downloaders"]["claro_doc"]).grid(row=len(campos) + 10, column=1, sticky="ew", pady=4)
+
         # --- Botões Salvar/Testar ---
-        ttk.Separator(parent, orient="horizontal").grid(row=len(campos) + 10, column=0, columnspan=2, sticky="ew", pady=15)
+        ttk.Separator(parent, orient="horizontal").grid(row=len(campos) + 11, column=0, columnspan=2, sticky="ew", pady=15)
         btns = tk.Frame(parent, bg=ENTRY_BG)
-        btns.grid(row=len(campos) + 11, column=1, sticky="e")
+        btns.grid(row=len(campos) + 12, column=1, sticky="e")
         create_button(btns, "Salvar Configurações", self._salvar_settings, row=0, side="left", small=True)
         create_button(btns, "Testar Conexão DB", self._testar_db_config, row=0, side="left", small=True)
 
         self.lbl_db_config = tk.Label(parent, text="", bg=ENTRY_BG, fg=SUBTEXT,
                                       font=("Segoe UI", 8), justify="left", anchor="w")
-        self.lbl_db_config.grid(row=len(campos) + 12, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+        self.lbl_db_config.grid(row=len(campos) + 13, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         self._atualizar_status_db()
 
     def _build_downloads_tab(self, parent):
@@ -343,11 +351,22 @@ class MacroApp:
                  font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
         dl_btns = tk.Frame(parent, bg=ENTRY_BG)
-        dl_btns.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8,0))
+        dl_btns.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
         create_button(dl_btns, "Baixar faturas da Mais Internet",
                       lambda: self._run_downloader_thread("mais"), row=0, side="left", small=True)
         create_button(dl_btns, "Baixar faturas da Vero Internet",
                       lambda: self._run_downloader_thread("vero"), row=0, side="left", small=True)
+
+        ttk.Separator(parent, orient="horizontal").grid(row=2, column=0, columnspan=2, sticky="ew", pady=15)
+        tk.Label(parent, text="Claro (via Cookies)", bg=ENTRY_BG, fg=CLARO_COLOR,
+                 font=("Segoe UI", 10, "bold")).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 4))
+
+        link_font = ("Segoe UI", 9, "underline")
+        link = tk.Label(parent, text="1. Clique aqui para abrir o portal da Claro, fazer login e ir para a página de contratos.", bg=ENTRY_BG, fg=ACCENT, cursor="hand2", font=link_font)
+        link.grid(row=4, column=0, columnspan=2, sticky="w")
+        link.bind("<Button-1>", lambda e: webbrowser.open_new("https://minhaclaroresidencial.claro.com.br/empresas/contratos"))
+        tk.Label(parent, text="2. Com a página aberta, copie os cookies (veja o README para instruções detalhadas).", bg=ENTRY_BG, fg=SUBTEXT, font=("Segoe UI", 9)).grid(row=5, column=0, columnspan=2, sticky="w")
+        create_button(parent, "3. Baixar faturas da Claro (usar cookies do clipboard)", lambda: self._run_downloader_thread("claro"), row=6, small=True)
 
     def _settings_from_vars(self):
         db_vars = self.settings_vars["database"]
@@ -369,6 +388,9 @@ class MacroApp:
                 "vero": {
                     "username": dl_vars["vero_user"].get().strip(),
                     "password": dl_vars["vero_pass"].get(),
+                },
+                "claro": {
+                    "document": dl_vars["claro_doc"].get().strip(),
                 },
             }
         }
@@ -565,15 +587,44 @@ class MacroApp:
                 return
             downloader_cls = VeroDownloader
             args = (username, password, self._log)
+        elif operadora == "claro":
+            creds = self.settings["downloaders"].get("claro", {})
+            document = creds.get("document")
+            if not document:
+                messagebox.showerror("Claro", "CNPJ (Documento) não configurado. Por favor, vá até a aba 'Configurações'.")
+                return
+            try:
+                cookie_json_str = self.root.clipboard_get()
+                if not isinstance(cookie_json_str, str) or not cookie_json_str.strip().startswith('['):
+                    messagebox.showerror("Claro - Cookies", "O conteúdo da área de transferência não parece ser um JSON de cookies válido.\n\nCopie o array de cookies da ferramenta de desenvolvedor do seu navegador.")
+                    return
+            except tk.TclError:
+                messagebox.showerror("Claro - Cookies", "Área de transferência vazia ou com conteúdo inválido.\n\nCopie o array de cookies da ferramenta de desenvolvedor do seu navegador.")
+                return
+            contracts_list = []
+            if not self.dados_claro:
+                self._log("⚠️ claro.json não carregado ou vazio. Não é possível buscar contratos.", "warn")
+            else:
+                for item in self.dados_claro:
+                    contrato_str = item.get("contrato", "")
+                    if "/" in contrato_str and len(contrato_str.split("/")) == 2:
+                        parts = contrato_str.split("/")
+                        contracts_list.append((parts[0].strip(), parts[1].strip()))
+            if not contracts_list:
+                messagebox.showwarning("Claro", "Nenhum contrato válido (formato 'codigo/numero') encontrado no arquivo claro.json. O download não pode continuar.")
+                return
+            downloader_cls = ClaroDownloader
+            args = (document, cookie_json_str, contracts_list, self._log)
         else:
             self._log(f"Downloader para '{operadora}' não implementado.", "error")
             return
 
         temp_dir = Path(APPDATA_DIR) / "temp_downloads"
         downloader = downloader_cls(*args)
-        
+
         def run():
-            self.pdfs_baixados = downloader.baixar_faturas_em_aberto(temp_dir)
+            novos_pdfs = downloader.baixar_faturas_em_aberto(temp_dir)
+            self.pdfs_baixados = sorted(list(set(self.pdfs_baixados + novos_pdfs)))
             self.root.after(10, self._atualizar_ui_pos_download)
         threading.Thread(target=run, daemon=True).start()
 

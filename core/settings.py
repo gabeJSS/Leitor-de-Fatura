@@ -22,6 +22,9 @@ DEFAULT_SETTINGS = {
             "username": "",
             "password": ""
         },
+        "claro": {
+            "document": ""
+        },
     }
 }
 

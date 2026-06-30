@@ -171,7 +171,7 @@ class MacroRunner:
         self.log_fn(f"\n{'-' * 54}", "sub")
         self.log_fn("Salvando Excel...", "info")
         self.status_fn("Gerando relatorio...")
-        caminho_xl = salvar_relatorio_prevoo(registros, output_dir=os.path.dirname(os.path.abspath(__file__)))
+        caminho_xl = salvar_relatorio_prevoo(registros)
         self.log_fn(f"Relatorio salvo:\n   {caminho_xl}", "ok")
         self.status_fn("Relatorio gerado!")
         return caminho_xl
@@ -251,7 +251,7 @@ class MacroRunner:
         self.log_fn(f"\n{'-' * 52}", "sub")
         self.log_fn(f"Concluido: {self._stats['ok']} OK | {self._stats['fail']} falha(s)", "bold")
         self.status_fn("Concluido")
-        caminho_xl = gerar_relatorio_excel(self.resultados, output_dir=os.path.dirname(os.path.abspath(__file__)))
+        caminho_xl = gerar_relatorio_excel(self.resultados)
         if caminho_xl:
             self.log_fn(f"Relatorio salvo: {caminho_xl}", "info")
         else:

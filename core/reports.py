@@ -7,6 +7,15 @@ from openpyxl.utils import get_column_letter
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 
+def _get_reports_dir():
+    """Cria e retorna o caminho para a pasta 'relatorios' na raiz do projeto."""
+    # Sobe dois níveis a partir de v2/core para chegar na raiz do projeto
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    reports_dir = os.path.join(project_root, 'relatorios')
+    os.makedirs(reports_dir, exist_ok=True)
+    return reports_dir
+
+
 def _header(ws, df_src, hdr_color="1F3864"):
     for ci, cn in enumerate(df_src.columns, 1):
         c = ws.cell(row=1, column=ci, value=cn)
@@ -29,10 +38,9 @@ def _row_fill(status):
     return "F2F7FF"
 
 
-def salvar_relatorio_prevoo(registros, output_dir=None):
+def salvar_relatorio_prevoo(registros):
     import pandas as pd
-    if output_dir is None:
-        output_dir = os.getcwd()
+    output_dir = _get_reports_dir()
     df = pd.DataFrame(registros)
     wb = Workbook()
     thin = Border(left=Side(style="thin"), right=Side(style="thin"),
@@ -112,9 +120,8 @@ def salvar_relatorio_prevoo(registros, output_dir=None):
     return caminho
 
 
-def gerar_relatorio_excel(resultados, output_dir=None):
-    if output_dir is None:
-        output_dir = os.getcwd()
+def gerar_relatorio_excel(resultados):
+    output_dir = _get_reports_dir()
     if not resultados:
         return None
     import pandas as pd
