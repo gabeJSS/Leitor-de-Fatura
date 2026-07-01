@@ -30,6 +30,17 @@ CNPJS_FORNECEDORES = {
 }
 
 
+def _posicao_valida(pos):
+    if not pos or len(pos) != 2:
+        return False
+    try:
+        x, y = int(pos[0]), int(pos[1])
+    except (TypeError, ValueError):
+        return False
+    largura, altura = pyautogui.size()
+    return 0 <= x < largura and 0 <= y < altura
+
+
 def abrir_pdf_com_fallback(caminho):
     ultimo_erro = None
     for senha in SENHAS_PDF:
@@ -226,7 +237,16 @@ class MacroRunner:
 
             nota = dados.get("numero_nota")
             nff = dados.get("nff") or dados.get("NFF")
-            if nota_ja_lancada(nota, nff, op, self.log_fn):
+            try:
+                ja_lancada = nota_ja_lancada(nota, nff, op, self.log_fn)
+            except Exception as erro:
+                self._stats["fail"] += 1
+                self.stats_update_fn()
+                self._add_resultado(nome_pdf, op, "Falha no banco", dados, str(erro))
+                self.log_fn(f"   Consulta ao banco falhou; nota nao sera lancada: {erro}", "error")
+                continue
+
+            if ja_lancada:
                 self._stats["ok"] += 1
                 self.stats_update_fn()
                 self._add_resultado(nome_pdf, op, "Ja lancada", dados, "Nota ja lancada anteriormente")
@@ -304,16 +324,20 @@ class MacroRunner:
                 time.sleep(1)
                 return True
 
-        self.log_fn("   ❌ Servidor não respondeu após 3 tentativas.", "error")
+        self.log_fn("   [ERRO] Servidor nao respondeu apos 3 tentativas.", "error")
         continuar = self.prompt_user_fn(
-            "Servidor não respondeu",
-            "O lançamento da nota não foi confirmado no banco de dados após 3 tentativas.\n\n"
+            "Servidor nao respondeu",
+            "O lancamento da nota nao foi confirmado no banco de dados apos 3 tentativas.\n\n"
             "Deseja continuar com a macro mesmo assim ou parar o processo?"
         )
 
-        if not continuar:
-            self.log_fn("   🛑 Usuário optou por parar a execução.", "error")
+        if continuar:
+            self.log_fn("   Usuario optou por continuar sem confirmacao do banco.", "warn")
+            return True
+
+        self.log_fn("   [PARAR] Usuario optou por parar a execucao.", "error")
         return False
+
 
     def _executar_automacao_erp(self, op, caminho, dados):
         nota = dados["numero_nota"]
@@ -328,7 +352,10 @@ class MacroRunner:
         self.log_fn(f"   Emissao: {emissao} | Venc: {venc}", "sub")
         time.sleep(1)
 
-        pyautogui.click(self.get_posicao_fn("fornecedor"))
+        fornecedor_pos = self.get_posicao_fn("fornecedor")
+        if not _posicao_valida(fornecedor_pos):
+            raise ValueError("Posicao do campo fornecedor nao configurada ou fora da tela")
+        pyautogui.click(fornecedor_pos)
         pyautogui.typewrite(CNPJS_FORNECEDORES.get(op, CNPJS_FORNECEDORES["vero"]))
         for _ in range(3):
             pyautogui.press("enter")
@@ -363,15 +390,22 @@ class MacroRunner:
             pyautogui.typewrite(cod_barras)
             pyautogui.press("enter")
 
-        pyautogui.click(self.get_posicao_fn("anexar2"))
+        anexar_pos = self.get_posicao_fn("anexar2")
+        if not _posicao_valida(anexar_pos):
+            raise ValueError("Posicao do botao anexar nao configurada ou fora da tela")
+        pyautogui.click(anexar_pos)
         pyautogui.press("enter")
         pyautogui.typewrite(caminho)
         pyautogui.press("enter")
         time.sleep(0.3)
         pyautogui.press("enter")
 
-        pyautogui.click(self.get_posicao_fn("pgto"))
-        pyautogui.click(self.get_posicao_fn("pgto2"))
+        pgto_pos = self.get_posicao_fn("pgto")
+        pgto2_pos = self.get_posicao_fn("pgto2")
+        if not _posicao_valida(pgto_pos) or not _posicao_valida(pgto2_pos):
+            raise ValueError("Posicoes de pagamento nao configuradas ou fora da tela")
+        pyautogui.click(pgto_pos)
+        pyautogui.click(pgto2_pos)
         pyautogui.press("enter")
         pyautogui.press("enter")
         pyautogui.typewrite(venc)

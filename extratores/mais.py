@@ -16,7 +16,8 @@ class ExtractorMais:
         try:
             m = re.search(pattern, texto, re.IGNORECASE)
             if m: return m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Regex falhou: {e}", "warn")
         return None
 
     def numero_nota(self, texto):
@@ -133,7 +134,9 @@ class ExtractorMais:
 
     def extrair_macro(self, caminho):
         try: texto = self.texto_pdf(caminho)
-        except Exception: return {}
+        except Exception as e:
+            self.log(f"Erro ao extrair dados para macro: {e}", "error")
+            return {}
         nfcom         = self.numero_nota(texto)
         _, em_fmt     = self.data_emissao(texto)
         _, vc_fmt     = self.data_vencimento(texto)

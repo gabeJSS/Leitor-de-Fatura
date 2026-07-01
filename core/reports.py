@@ -10,7 +10,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 def _get_reports_dir():
     """Cria e retorna o caminho para a pasta 'relatorios' na raiz do projeto."""
     # Sobe dois níveis a partir de v2/core para chegar na raiz do projeto
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     reports_dir = os.path.join(project_root, 'relatorios')
     os.makedirs(reports_dir, exist_ok=True)
     return reports_dir
@@ -29,11 +29,12 @@ def _header(ws, df_src, hdr_color="1F3864"):
 
 
 def _row_fill(status):
-    if "✅" in str(status):
+    status_txt = str(status).lower()
+    if "[ok]" in status_txt or "ok" in status_txt or "processado" in status_txt:
         return "E2EFDA"
-    if "⚠" in str(status):
+    if "[aviso]" in status_txt or "aviso" in status_txt or "atencao" in status_txt:
         return "FFF2CC"
-    if "❌" in str(status):
+    if "[erro]" in status_txt or "erro" in status_txt or "falha" in status_txt:
         return "FFE0E0"
     return "F2F7FF"
 

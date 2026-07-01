@@ -698,7 +698,9 @@ class MacroApp:
             padroes = {"fornecedor": (2680, 170), "nota_fiscal": (2680, 190),
                        "confirmar": (3058, 825), "anexar": (2688, 229),
                        "anexar2": (2637, 147), "pgto": (2757, 598), "pgto2": (2729, 681)}
-            return padroes[campo]
+            return padroes.get(campo)
+        if campo not in self.inputs_manuais:
+            return self.posicoes.get(campo)
         x_var, y_var = self.inputs_manuais[campo]
         try:
             return (int(x_var.get()), int(y_var.get()))

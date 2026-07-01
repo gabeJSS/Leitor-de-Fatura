@@ -22,3 +22,6 @@ eggs/
 .env
 venv/
 .venv/
+# Configuracoes e credenciais locais
+settings.json
+MacroNotas/

@@ -14,7 +14,8 @@ class ExtractorVero:
         try:
             m = re.search(pattern, texto, re.IGNORECASE)
             if m: return m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Regex falhou: {e}", "warn")
         return None
 
     def numero_nota(self, texto): return self.rx(texto, r"Nº:\s*(\d+)")
@@ -72,12 +73,14 @@ class ExtractorVero:
         try:
             m = re.search(r"((?:R\w*|AV\w*|RUA|AVENIDA|TRAVESSA)\s+[\w\s]+,\s*\d+[^•\n]{5,80})", texto, re.IGNORECASE)
             if m: endereco = m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Erro ao extrair endereco: {e}", "warn")
         itens_str = ""
         try:
             itens = re.findall(r"(VERO[\w\s\-]+?|B2B[\w\s\-]+?)\s+UN\s+1\s+R\$\s*([\d\.,]+)", texto, re.IGNORECASE)
             if itens: itens_str = " | ".join(f"{n.strip()} R${v}" for n, v in itens)
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Erro ao extrair itens da fatura: {e}", "warn")
 
         contrato_json, nome_json, extra_json = self.buscar_json(cod)
         campos_ok = all([numero_nota or nota_fatura_nff, valor_total, cod, data_vc_raw])
@@ -106,7 +109,9 @@ class ExtractorVero:
 
     def extrair_macro(self, caminho):
         try: texto = self.texto_pdf(caminho)
-        except Exception: return {}
+        except Exception as e:
+            self.log(f"Erro ao extrair dados para macro: {e}", "error")
+            return {}
         nota = self.numero_nota(texto)
         _, emissao_fmt = self.data_emissao(texto)
         _, venc_fmt    = self.data_vencimento(texto)

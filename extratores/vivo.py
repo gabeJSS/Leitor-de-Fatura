@@ -14,14 +14,16 @@ class ExtractorVivo:
                     partes = [p.extract_text() or "" for p in pdf.pages]
                 texto = re.sub(r"\s+", " ", "\n".join(partes))
                 if texto.strip(): return texto
-            except Exception: pass
+            except Exception as e:
+                self.log(f"Erro ao ler PDF Vivo: {e}", "warn")
         return ""
 
     def rx(self, texto, pattern):
         try:
             m = re.search(pattern, texto, re.IGNORECASE)
             if m: return m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Regex falhou: {e}", "warn")
         return None
 
     def numero_nota(self, texto): return self.rx(texto, r"N[uú]mero da Fatura:\s*(\d+)")
@@ -55,7 +57,8 @@ class ExtractorVivo:
             itens = re.findall(r"(Mensalidade IP Fixo|VIVO Fibra[\w\s]+?|Ubook[\w\s]+?|Skeelo[\w\s]+?)"
                                r"\s+un\s+1\s+[\d\.,]+\s+[-\d\.,]+\s+([\d\.,]+)", texto, re.IGNORECASE)
             if itens: return " | ".join(f"{n.strip()} R${v}" for n,v in itens)
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Erro ao extrair itens da fatura: {e}", "warn")
         return ""
 
     def codigo_barras(self, texto):
@@ -120,7 +123,9 @@ class ExtractorVivo:
 
     def extrair_macro(self, caminho):
         try: texto = self.texto_pdf(caminho)
-        except Exception: return {}
+        except Exception as e:
+            self.log(f"Erro ao extrair dados para macro: {e}", "error")
+            return {}
         nota = self.numero_nota(texto)
         _, em_fmt = self.data_emissao(texto); _, vc_fmt = self.data_vencimento(texto)
         valor = self.valor(texto); cod = self.cod_cliente(texto)

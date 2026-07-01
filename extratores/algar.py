@@ -16,7 +16,8 @@ class ExtractorAlgar:
         try:
             m = re.search(pattern, texto, re.IGNORECASE)
             if m: return m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Regex falhou: {e}", "warn")
         return None
 
     def numero_nota(self, texto):
@@ -79,14 +80,16 @@ class ExtractorAlgar:
         try:
             m = re.search(r"ENDERE[CÇ]O:\s*(.+?)(?:PALHOCA|FLORIANOPOLIS|JOINVILLE|\d{5}-\d{3}|$)", texto, re.IGNORECASE)
             if m: return m.group(1).strip()
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Erro ao extrair endereco: {e}", "warn")
         return ""
 
     def itens_fatura(self, texto):
         try:
             itens = re.findall(r"([\w\s/]+?)\s+(\d+)\s+UN\s+[\d\.,]+\s+[\d\.,]+\s+([\d\.,]+)", texto, re.IGNORECASE)
             if itens: return " | ".join(f"{n.strip()} R${v}" for n,_,v in itens[:8])
-        except Exception: pass
+        except Exception as e:
+            self.log(f"Erro ao extrair itens da fatura: {e}", "warn")
         return ""
 
     def codigo_barras(self, texto):
@@ -145,7 +148,9 @@ class ExtractorAlgar:
 
     def extrair_macro(self, caminho):
         try: texto = self.texto_pdf(caminho)
-        except Exception: return {}
+        except Exception as e:
+            self.log(f"Erro ao extrair dados para macro: {e}", "error")
+            return {}
         nota = self.numero_nota(texto)
         _, em_fmt = self.data_emissao(texto); _, vc_fmt = self.data_vencimento(texto)
         valor = self.valor(texto); cod = self.cod_cliente(texto)

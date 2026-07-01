@@ -53,11 +53,13 @@ def conectar_banco(config: Optional[dict] = None, timeout: int = 10):
 
 def testar_conexao(config: Optional[dict] = None):
     conn = conectar_banco(config=config, timeout=5)
-    cursor = conn.cursor()
-    cursor.execute("SELECT 1")
-    cursor.fetchone()
-    cursor.close()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+    finally:
+        conn.close()
 
 
 def fornecedor_por_operadora(op: str) -> Optional[str]:
@@ -87,6 +89,7 @@ def nota_ja_lancada(numero_nota: str, nff: str, op: str, log_fn: Callable[[str, 
             log_fn("Sem numero de nota para consultar no banco", "warn")
         return False
 
+    conn = None
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
@@ -100,9 +103,11 @@ def nota_ja_lancada(numero_nota: str, nff: str, op: str, log_fn: Callable[[str, 
         cursor.execute(query, (str(fornecedor), *candidatos))
         resultado = cursor.fetchone()
         cursor.close()
-        conn.close()
         return resultado is not None
     except Exception as erro:
         if log_fn:
             log_fn(f"Erro ao consultar banco: {erro}", "error")
-        return False
+        raise
+    finally:
+        if conn is not None:
+            conn.close()

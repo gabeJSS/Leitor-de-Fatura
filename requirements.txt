@@ -1,0 +1,5 @@
+pyautogui
+tkinterdnd2-universal
+requests
+pyodbc
+pdfplumber
